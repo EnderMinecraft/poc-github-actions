@@ -1,36 +1,47 @@
-### PYTHON NATIVE DEPENDENCIES
-import json
+"""
+Python Archive Reader 1.0
+https://github.com/PastebinArchiveReader/PAR
 
-### DEPENDENCIES TO IMPORT ON THE GH WORKFLOW
+"""
+
 import requests
+from bs4 import BeautifulSoup
+import urllib
+import argparse
+import time
 
-### SCRIPT SAMPLE EXECUTED THROUGH GH WORKFLOW
-print(f"💡 \033[36mScript example: Getting Brazil Covid-19 datas\033[0m")
+# add parsing functionality to provide files
+parser = argparse.ArgumentParser(description="Script to download pastebin.com archives",
+                                 epilog='''You can download different archives from pastebin.com with this script.
+Simply specify a language, extension and path.''')
+parser.add_argument("-l", "--language", dest="language", help="specify the programming language",
+                    metavar="python, csharp, cpp, etc.")
+parser.add_argument("-e", "--extension", dest="extension", help="file extension of the language",
+                    metavar="extension")
+parser.add_argument("-p", "--path", dest="path", help="where to save the downloaded files",
+                    metavar="/home/anon/scripts/")
+args = parser.parse_args()
 
-try:
-  response1 = requests.get("https://covid-api.mmediagroup.fr/v1/cases?country=Brazil")
+url = "http://pastebin.com/archive/" + args.language
 
-  country_datas = response1.json()
+while 1:
 
-  cases = country_datas["All"]
+    source = requests.get(url)
+    soup = BeautifulSoup(source.text)
 
-  print("🤒 🇧🇷 Confirmed cases:", cases["confirmed"])
-  print("🥳 🇧🇷 Recovered cases:", cases["recovered"])
-  print("😢 🇧🇷 Deaths:", cases["deaths"])
+    for link in soup.find_all('a'):
+        if len(link.get('href')) == 9:
+            if link.get('href') != "/settings": # "/settings" is just a 9-characters configuration file from Pastebin.com. Pointless.
+                ID = link.get('href')
+                paste = link.get('href').replace('/', '')
+                paste = "http://www.pastebin.com/raw.php?i=" + paste
+                print("[?] {}".format(paste))
 
-except:
-   print("Couldn't extract Brazil cases datas") 
+                downloaded_file = args.path + "/" + ID + args.extension
+                urllib.urlretrieve(paste, downloaded_file)
+                print("[!] Downloaded !\n")
+                time.sleep(3.5) # If the delay is smaller, Pastebin.com will block your IP
 
-try:    
-  response2 = requests.get("https://covid-api.mmediagroup.fr/v1/vaccines?country=Brazil")
-
-  vaccines_datas = response2.json()
-
-  vaccines = vaccines_datas["All"]
-
-  print("📦 🇧🇷 Vaccines quantity:", vaccines["administered"])
-  print("💉 🇧🇷 Vaccinated people:", vaccines["people_vaccinated"])
-
-except:
-  print("Couldn't extract Brazil vaccines datas") 
-  
+    print("Finished !")
+    time.sleep(1)
+    print("Restarting...")
